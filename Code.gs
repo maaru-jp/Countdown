@@ -1,7 +1,64 @@
 // 複製此檔案內容到 Google Apps Script 編輯器，並將 SPREADSHEET_ID 改為你的試算表 ID
 // 詳見 GoogleAppsScript.md
 
-const SPREADSHEET_ID = '1aUzAPcHtrsxufOSumJPdWgiOUZLkPi2BHQadofrmdxg';
+const SPREADSHEET_ID = '你的試算表ID';
+
+/** 將試算表日期欄位轉成 YYYY-MM-DD 字串（供前台與後台 date input 使用） */
+function formatDateOnlyCell(val) {
+  if (val === undefined || val === null || val === '') return null;
+  if (typeof val === 'object' && val.getTime) {
+    var y = val.getFullYear(), m = val.getMonth() + 1, d = val.getDate();
+    return y + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
+  }
+  if (typeof val === 'number') {
+    var serialD = new Date((val - 25569) * 86400 * 1000);
+    if (!isNaN(serialD.getTime())) {
+      var sm = serialD.getMonth() + 1, sd = serialD.getDate();
+      return serialD.getFullYear() + '-' + (sm < 10 ? '0' : '') + sm + '-' + (sd < 10 ? '0' : '') + sd;
+    }
+  }
+  var s = String(val).trim();
+  if (!s) return null;
+  var datePart = s.indexOf('T') >= 0 ? s.split('T')[0] : s;
+  datePart = datePart.replace(/\//g, '-');
+  var parts = datePart.split('-');
+  if (parts.length < 3) return s;
+  var y2 = parseInt(parts[0], 10), m2 = parseInt(parts[1], 10), d2 = parseInt(parts[2], 10);
+  if (isNaN(y2) || isNaN(m2) || isNaN(d2)) return s;
+  return y2 + '-' + (m2 < 10 ? '0' : '') + m2 + '-' + (d2 < 10 ? '0' : '') + d2;
+}
+
+/** 開團結果：success（成功開團）/ failed（未成團）；非已結團可留空 */
+function normalizeOpenResultCell(val) {
+  var s = String(val || '').trim();
+  if (s === 'success' || s === '成功開團' || s === '成功') return 'success';
+  if (s === 'failed' || s === '未成團' || s === '失敗' || s === '未成功') return 'failed';
+  return '';
+}
+
+function buildRowValues(p) {
+  var progressStr = p.progress || '[]';
+  var statusStr = String(p.status || '').trim();
+  var openResult = '';
+  if (statusStr === 'ended' || statusStr === '已結團') {
+    openResult = normalizeOpenResultCell(p.openResult);
+  }
+  return [
+    p.title || '',
+    p.imageUrl || '',
+    p.badge || '',
+    p.startDate || '',
+    p.endDate || '',
+    p.registeredCount || '',
+    p.status || '',
+    progressStr,
+    p.countdownTo || '',
+    p.expectedShipDate || '',
+    p.shipDelayDays !== undefined && p.shipDelayDays !== null && p.shipDelayDays !== '' ? String(p.shipDelayDays) : '',
+    new Date().toISOString(),
+    openResult
+  ];
+}
 
 // 依開團日、結團日與現在時間，決定回傳給前台的 status（試算表不改寫，僅覆寫 API 回傳）
 // 開團日「中午 12:00（UTC）」起為正在開團；之前為即將開團；結團日後為已結團
@@ -72,21 +129,7 @@ function doPost(e) {
       if (isNaN(rowIndex) || rowIndex < 2) {
         return ContentService.createTextOutput(JSON.stringify({ ok: false, error: '請提供有效的 rowIndex（從 2 起）' })).setMimeType(ContentService.MimeType.JSON);
       }
-      var progressStr = p.progress || '[]';
-      var values = [
-        p.title || '',
-        p.imageUrl || '',
-        p.badge || '',
-        p.startDate || '',
-        p.endDate || '',
-        p.registeredCount || '',
-        p.status || '',
-        progressStr,
-        p.countdownTo || '',
-        p.expectedShipDate || '',
-        p.shipDelayDays !== undefined && p.shipDelayDays !== null && p.shipDelayDays !== '' ? String(p.shipDelayDays) : '',
-        new Date().toISOString()
-      ];
+      var values = buildRowValues(p);
       var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       var sheet = ss.getSheets()[0];
       if (!sheet) {
@@ -100,21 +143,7 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify({ ok: true, message: '已更新試算表「' + sheet.getName() + '」第 ' + rowIndex + ' 列' })).setMimeType(ContentService.MimeType.JSON);
     }
     if (String(p.action) === 'append') {
-      var progressStr = p.progress || '[]';
-      var values = [
-        p.title || '',
-        p.imageUrl || '',
-        p.badge || '',
-        p.startDate || '',
-        p.endDate || '',
-        p.registeredCount || '',
-        p.status || '',
-        progressStr,
-        p.countdownTo || '',
-        p.expectedShipDate || '',
-        p.shipDelayDays !== undefined && p.shipDelayDays !== null && p.shipDelayDays !== '' ? String(p.shipDelayDays) : '',
-        new Date().toISOString()
-      ];
+      var values = buildRowValues(p);
       var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       var sheet = ss.getSheets()[0];
       if (!sheet) {
@@ -128,14 +157,7 @@ function doPost(e) {
       var row = typeof p.row === 'object' ? p.row : null;
       if (!row && typeof p.row === 'string') try { row = JSON.parse(p.row); } catch (err) {}
       if (row && row.title !== undefined) {
-        var progressStr = JSON.stringify(row.progress || []);
-        var values = [
-          row.title || '', row.imageUrl || '', row.badge || '', row.startDate || '', row.endDate || '',
-          row.registeredCount !== undefined && row.registeredCount !== null ? String(row.registeredCount) : '',
-          row.status || '', progressStr, row.countdownTo || '', row.expectedShipDate || '',
-          row.shipDelayDays !== undefined && row.shipDelayDays !== null && row.shipDelayDays !== '' ? String(row.shipDelayDays) : '',
-          new Date().toISOString()
-        ];
+        var values = buildRowValues(row);
         var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
         var sheet = ss.getSheets()[0];
         if (!sheet) {
@@ -151,14 +173,7 @@ function doPost(e) {
         var params = JSON.parse(raw);
         if (params.action === 'append' && params.row) {
           var row = params.row;
-          var progressStr = JSON.stringify(row.progress || []);
-          var values = [
-            row.title || '', row.imageUrl || '', row.badge || '', row.startDate || '', row.endDate || '',
-            row.registeredCount !== undefined && row.registeredCount !== null ? String(row.registeredCount) : '',
-            row.status || '', progressStr, row.countdownTo || '', row.expectedShipDate || '',
-            row.shipDelayDays !== undefined && row.shipDelayDays !== null && row.shipDelayDays !== '' ? String(row.shipDelayDays) : '',
-            new Date().toISOString()
-          ];
+          var values = buildRowValues(row);
           var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
           var sheet = ss.getSheets()[0];
           if (!sheet) {
@@ -266,20 +281,22 @@ function doGet(e) {
           listedAt = String(rawListedAt).trim() || null;
         }
       }
+      var openResult = row.length > 12 ? normalizeOpenResultCell(row[12]) : '';
       return {
         id: id,
         title: row[0],
         imageUrl: row[1] || null,
         badge: row[2] || 'hot',
-        startDate: row[3],
-        endDate: row[4],
+        startDate: formatDateOnlyCell(row[3]),
+        endDate: formatDateOnlyCell(row[4]),
         registeredCount: registeredCount,
         status: status,
         progress: progress,
         countdownTo: countdownTo,
         expectedShipDate: expectedShipDate,
         shipDelayDays: shipDelayDays,
-        listedAt: listedAt
+        listedAt: listedAt,
+        openResult: openResult || null
       };
     });
     return ContentService.createTextOutput(JSON.stringify(list)).setMimeType(ContentService.MimeType.JSON);
