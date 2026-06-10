@@ -261,9 +261,17 @@ body {
   margin-top: -1rem;
   margin-bottom: 1.5rem;
 }
+.tabs--sub[hidden] {
+  display: none;
+}
 .tab--sub {
   font-size: 0.9rem;
   padding: 0.5rem 1rem;
+}
+.tab--sub.active {
+  background: var(--accent-soft);
+  color: var(--tab-active);
+  border-color: var(--accent);
 }
 
 /* ========== 商品卡區 ========== */
@@ -414,6 +422,67 @@ body {
     0 4px 12px rgba(0, 0, 0, 0.04),
     0 0 0 1px var(--card-border);
   border-color: var(--accent);
+}
+
+/* 已結團：成功開團版型 */
+.product-card--ended-success {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.product-card--ended-success:hover {
+  border-color: rgba(16, 185, 129, 0.55);
+}
+
+/* 已結團：未成團版型（淡化、弱 hover） */
+.product-card--ended-failed {
+  opacity: 0.88;
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+}
+.product-card--ended-failed:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.card-result-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  letter-spacing: 0.03em;
+}
+.card-result-badge--success {
+  background: rgba(16, 185, 129, 0.18);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.card-result-badge--failed {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-muted);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.card-image-wrap--muted .card-image {
+  filter: grayscale(0.35) brightness(0.92);
+}
+
+.card-ended-note {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  background: rgba(148, 163, 184, 0.08);
+  border-radius: var(--radius-sm, 8px);
+  text-align: center;
+}
+
+.progress-wrap--failed {
+  border-top-color: rgba(148, 163, 184, 0.2);
 }
 
 .card-badge {
