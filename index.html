@@ -31,10 +31,16 @@
       </a>
     </div>
 
-    <nav class="tabs" role="tablist">
+    <nav class="tabs" role="tablist" aria-label="開團狀態">
       <button type="button" class="tab active" role="tab" aria-selected="true" data-filter="upcoming">即將開團</button>
       <button type="button" class="tab" role="tab" aria-selected="false" data-filter="ongoing">正在開團</button>
       <button type="button" class="tab" role="tab" aria-selected="false" data-filter="ended">已結團</button>
+    </nav>
+
+    <nav class="tabs tabs--sub" id="endedSubTabs" role="tablist" aria-label="已結團子分類" hidden>
+      <button type="button" class="tab tab--sub" role="tab" aria-selected="false" data-ended-filter="all">全部</button>
+      <button type="button" class="tab tab--sub active" role="tab" aria-selected="true" data-ended-filter="success">成功結團</button>
+      <button type="button" class="tab tab--sub" role="tab" aria-selected="false" data-ended-filter="failed">未成團</button>
     </nav>
 
     <section class="cards-section" role="tabpanel">
