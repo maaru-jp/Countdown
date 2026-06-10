@@ -116,6 +116,11 @@
   /** 將欄位值轉成 YYYY-MM-DD（支援字串 -/ 與 Excel 序列數字），供倒數目標用 */
   function toDateOnlyString(val) {
     if (val === undefined || val === null) return null;
+    if (typeof val === 'object' && val && typeof val.getTime === 'function') {
+      var dt = val instanceof Date ? val : new Date(val);
+      if (!dt || isNaN(dt.getTime())) return null;
+      return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+    }
     if (typeof val === 'number') {
       var d = new Date((val - 25569) * 86400 * 1000);
       if (isNaN(d.getTime())) return null;
@@ -130,51 +135,50 @@
     if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
     return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
   }
-  /** 取得「開團時刻」：開團日已過則一律視為已開團；否則有填倒數目標時間則以該時刻為準，沒填則為開團日中午 12:00 */
+  /** 取得「開團時刻」：僅「即將開團」才用 countdownTo；其餘用開團日中午 12:00 */
   function getOpeningMoment(p) {
-    var ct = p.countdownTo;
-    if (ct != null && String(ct).trim() !== '') {
-      // 臨時開團：以倒數目標時間為最高優先（即使 startDate 因試算表時區/格式偏移導致「落在昨天」）
-      var d = new Date(ct);
-      if (!isNaN(d.getTime())) return d;
+    var s = String(p.status || '').trim();
+    var isUpcoming = s === 'upcoming' || s === '即將開團';
+
+    if (isUpcoming) {
+      var ct = p.countdownTo;
+      if (ct != null && String(ct).trim() !== '') {
+        var ctStr = String(ct).trim();
+        if (ctStr.length === 16 && ctStr.indexOf('T') > 0) ctStr = ctStr + ':00';
+        var cd = new Date(ctStr);
+        if (!isNaN(cd.getTime())) return cd;
+      }
     }
 
-    // 沒有 countdownTo 時，才用 startDate 的中午 12:00 當作開團時刻
     var startStr = toDateOnlyString(p.startDate);
     if (!startStr) return null;
     var start = parseLocalDateOnly(startStr);
     if (!start) return null;
-    var startNoon = new Date(start.year, start.month, start.date, 12, 0, 0, 0);
-
-    var now = new Date();
-    var todayY = now.getFullYear(), todayM = now.getMonth(), todayD = now.getDate();
-    var todayValue = todayY * 10000 + todayM * 100 + todayD;
-    if (todayValue > start.value) return startNoon;
-
-    return startNoon;
+    return new Date(start.year, start.month, start.date, 12, 0, 0, 0);
   }
 
   function resolveStatusByDate(p) {
     var now = new Date();
     var todayY = now.getFullYear(), todayM = now.getMonth(), todayD = now.getDate();
     var todayValue = todayY * 10000 + todayM * 100 + todayD;
+    var s = String(p.status || '').trim();
 
-    // 以「結團日是否已過」先判斷 ended
+    // 結團日已過 → 已結團
     var endDateStr = toDateOnlyString(p.endDate);
     if (endDateStr) {
       var end = parseLocalDateOnly(endDateStr);
       if (end && todayValue > end.value) return 'ended';
-    } else {
-      // 若沒有結團日，才退回使用來源狀態
-      var s0 = String(p.status || '').trim();
-      if (s0 === 'ended' || s0 === '已結團') return 'ended';
     }
+    // 試算表/API 標記已結團
+    if (s === 'ended' || s === '已結團') return 'ended';
 
-    // 再以「開團時刻」判斷是否 upcoming（支援倒數目標 countdownTo）
+    // 試算表/API 標記正在開團（且未過結團日）
+    if (s === 'ongoing' || s === '正在開團') return 'ongoing';
+
+    // 即將開團：依 countdownTo 或開團日中午判斷
     var openingMoment = getOpeningMoment(p);
     if (openingMoment && now < openingMoment) return 'upcoming';
 
-    // 其餘情況都算正在開團
     return 'ongoing';
   }
 
