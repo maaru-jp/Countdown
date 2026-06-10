@@ -132,20 +132,25 @@
   }
   /** 取得「開團時刻」：開團日已過則一律視為已開團；否則有填倒數目標時間則以該時刻為準，沒填則為開團日中午 12:00 */
   function getOpeningMoment(p) {
+    var ct = p.countdownTo;
+    if (ct != null && String(ct).trim() !== '') {
+      // 臨時開團：以倒數目標時間為最高優先（即使 startDate 因試算表時區/格式偏移導致「落在昨天」）
+      var d = new Date(ct);
+      if (!isNaN(d.getTime())) return d;
+    }
+
+    // 沒有 countdownTo 時，才用 startDate 的中午 12:00 當作開團時刻
     var startStr = toDateOnlyString(p.startDate);
     if (!startStr) return null;
     var start = parseLocalDateOnly(startStr);
     if (!start) return null;
     var startNoon = new Date(start.year, start.month, start.date, 12, 0, 0, 0);
+
     var now = new Date();
     var todayY = now.getFullYear(), todayM = now.getMonth(), todayD = now.getDate();
     var todayValue = todayY * 10000 + todayM * 100 + todayD;
     if (todayValue > start.value) return startNoon;
-    var ct = p.countdownTo;
-    if (ct != null && String(ct).trim() !== '') {
-      var d = new Date(ct);
-      if (!isNaN(d.getTime())) return d;
-    }
+
     return startNoon;
   }
 
@@ -154,15 +159,22 @@
     var todayY = now.getFullYear(), todayM = now.getMonth(), todayD = now.getDate();
     var todayValue = todayY * 10000 + todayM * 100 + todayD;
 
-    var openingMoment = getOpeningMoment(p);
-    if (openingMoment && now < openingMoment) return 'upcoming';
-
+    // 以「結團日是否已過」先判斷 ended
     var endDateStr = toDateOnlyString(p.endDate);
     if (endDateStr) {
       var end = parseLocalDateOnly(endDateStr);
       if (end && todayValue > end.value) return 'ended';
+    } else {
+      // 若沒有結團日，才退回使用來源狀態
+      var s0 = String(p.status || '').trim();
+      if (s0 === 'ended' || s0 === '已結團') return 'ended';
     }
-    // 開團時刻已過且未結團 → 一律視為正在開團（臨時開團時間到會自動移入）
+
+    // 再以「開團時刻」判斷是否 upcoming（支援倒數目標 countdownTo）
+    var openingMoment = getOpeningMoment(p);
+    if (openingMoment && now < openingMoment) return 'upcoming';
+
+    // 其餘情況都算正在開團
     return 'ongoing';
   }
 
@@ -274,22 +286,23 @@
           if (cdEnd && !cdEnd.done) {
             countdownParts.push('<div class="countdown" data-countdown-type="end">結團時間：<span>' + cdEnd.text + '</span></div>');
           } else if (cdEnd && cdEnd.done) {
-            countdownParts.push('<div class="countdown countdown-done" data-countdown-type="end">已結團</div>');
+            // 即使倒數到期，也維持顯示「結團時間」這行，讓正在開團卡片仍看得到結團時間倒數
+            countdownParts.push('<div class="countdown countdown-done" data-countdown-type="end">結團時間：<span>' + cdEnd.text + '</span></div>');
           }
         }
       } else {
         countdownParts.push('<div class="countdown countdown-done">已結團</div>');
       }
-      // 不論即將開團／正在開團／已結團，只要有預計出貨日就顯示出貨倒數（已結團後尤其需要顯示）
-      var shipTarget = getShipCountdownTarget(p);
-      if (shipTarget) {
-        var cdShip = getCountdown(shipTarget);
-        var isEnded = (statusForCountdown === 'ended');
-        var shipLabel = isEnded ? '出貨倒數' : '預計出貨倒數';
-        if (cdShip && !cdShip.done) {
-          countdownParts.push('<div class="countdown" data-countdown-type="ship">' + shipLabel + '：<span>' + cdShip.text + '</span></div>');
-        } else if (cdShip && cdShip.done) {
-          countdownParts.push('<div class="countdown countdown-done" data-countdown-type="ship">已過預計出貨日</div>');
+      // 只在「已結團」頁顯示出貨倒數，避免正在開團/即將開團也跳出出貨倒數造成混淆
+      if (statusForCountdown === 'ended') {
+        var shipTarget = getShipCountdownTarget(p);
+        if (shipTarget) {
+          var cdShip = getCountdown(shipTarget);
+          if (cdShip && !cdShip.done) {
+            countdownParts.push('<div class="countdown" data-countdown-type="ship">出貨倒數：<span>' + cdShip.text + '</span></div>');
+          } else if (cdShip && cdShip.done) {
+            countdownParts.push('<div class="countdown countdown-done" data-countdown-type="ship">已過預計出貨日</div>');
+          }
         }
       }
       var countdownHtml = countdownParts.join('');
@@ -469,7 +482,7 @@
       if (!cd) return;
       if (cd.done) {
         if (type === 'start') div.innerHTML = '開團已到';
-        else if (type === 'end') div.innerHTML = '已結團';
+        else if (type === 'end') div.innerHTML = '結團時間：<span>' + cd.text + '</span>';
         else if (type === 'ship') div.innerHTML = '已過預計出貨日';
         else div.innerHTML = '已到期';
         div.classList.add('countdown-done');

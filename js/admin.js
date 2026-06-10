@@ -4,6 +4,7 @@
   const STORAGE_KEY = 'groupBuyData';
   const SCRIPT_URL_KEY = 'googleScriptUrl'; // 與展示頁共用，供從試算表讀取列表（選用）
   var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwMsCxagnkHf6TbS5PzLJ-PpxyJY32eeDLTkX_vdDmCDeJ8OdUE2DxWyh4w2yquj7v3/exec';
+  var listFilter = 'all';
 
   function getScriptUrl() {
     try {
@@ -38,6 +39,98 @@
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
+  /** 轉成 <input type="date"> 需要的 YYYY-MM-DD（支援試算表 ISO、斜線、Excel 序號） */
+  function toInputDateString(val) {
+    if (val === undefined || val === null || val === '') return '';
+    if (typeof val === 'number') {
+      var serialD = new Date((val - 25569) * 86400 * 1000);
+      if (isNaN(serialD.getTime())) return '';
+      return serialD.getFullYear() + '-' + String(serialD.getMonth() + 1).padStart(2, '0') + '-' + String(serialD.getDate()).padStart(2, '0');
+    }
+    if (typeof val === 'object' && val && typeof val.getTime === 'function') {
+      var objD = val instanceof Date ? val : new Date(val);
+      if (isNaN(objD.getTime())) return '';
+      return objD.getFullYear() + '-' + String(objD.getMonth() + 1).padStart(2, '0') + '-' + String(objD.getDate()).padStart(2, '0');
+    }
+    var s = String(val).trim();
+    if (!s) return '';
+    var datePart = s.indexOf('T') >= 0 ? s.split('T')[0] : s;
+    datePart = datePart.replace(/\//g, '-');
+    var parts = datePart.split('-');
+    if (parts.length < 3) return '';
+    var y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return '';
+    return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
+
+  function toInputDateTimeLocal(val) {
+    if (val === undefined || val === null || val === '') return '';
+    try {
+      var d = new Date(val);
+      if (isNaN(d.getTime())) return '';
+      var y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+      var h = String(d.getHours()).padStart(2, '0'), min = String(d.getMinutes()).padStart(2, '0');
+      return y + '-' + m + '-' + day + 'T' + h + ':' + min;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function normalizeStatusForForm(status) {
+    var s = String(status || '').trim();
+    if (s === 'upcoming' || s === '即將開團') return 'upcoming';
+    if (s === 'ended' || s === '已結團') return 'ended';
+    return 'ongoing';
+  }
+
+  function normalizeOpenResult(val) {
+    var s = String(val || '').trim();
+    if (s === 'success' || s === '成功開團' || s === '成功') return 'success';
+    if (s === 'failed' || s === '未成團' || s === '失敗' || s === '未成功') return 'failed';
+    return '';
+  }
+
+  function inferOpenResult(item) {
+    if (normalizeStatusForForm(item.status) !== 'ended') return '';
+    var explicit = normalizeOpenResult(item.openResult);
+    if (explicit) return explicit;
+    var progress = item.progress || [];
+    var ordered = progress.find(function (n) { return n.name === '收單中' && n.done; });
+    if (ordered || (item.registeredCount != null && item.registeredCount > 0)) return 'success';
+    return 'failed';
+  }
+
+  function openResultLabel(val) {
+    if (val === 'success') return '成功開團';
+    if (val === 'failed') return '未成團';
+    return '';
+  }
+
+  function matchesListFilter(item) {
+    var statusKey = normalizeStatusForForm(item.status);
+    var resultKey = inferOpenResult(item);
+    if (listFilter === 'all') return true;
+    if (listFilter === 'active') return statusKey !== 'ended';
+    if (listFilter === 'success-ended') return statusKey === 'ended' && resultKey === 'success';
+    if (listFilter === 'failed-ended') return statusKey === 'ended' && resultKey === 'failed';
+    return true;
+  }
+
+  function toggleOpenResultRow() {
+    var form = document.getElementById('groupForm');
+    var row = document.getElementById('openResultRow');
+    if (!form || !row) return;
+    var status = (form.querySelector('input[name="status"]:checked') || {}).value || 'ongoing';
+    row.hidden = status !== 'ended';
+  }
+
+  function getOpenResultFromForm(form) {
+    var status = (form.querySelector('input[name="status"]:checked') || {}).value || 'ongoing';
+    if (status !== 'ended') return '';
+    var el = form.querySelector('input[name="openResult"]:checked');
+    return el ? normalizeOpenResult(el.value) : 'success';
+  }
+
   function getFormData() {
     var form = document.getElementById('groupForm');
     var title = form.title.value.trim();
@@ -69,6 +162,7 @@
       endDate: endDate,
       badge: badge,
       status: status,
+      openResult: getOpenResultFromForm(form),
       registeredCount: registeredCount,
       progress: progress,
       countdownTo: countdownTo || null,
@@ -84,6 +178,7 @@
       title: data.title,
       imageUrl: data.imageUrl || null,
       status: data.status,
+      openResult: data.openResult || null,
       badge: data.badge,
       startDate: data.startDate,
       endDate: data.endDate,
@@ -140,11 +235,21 @@
     var editingIdEl = document.getElementById('editingId');
     var editingId = (editingIdEl && editingIdEl.value) ? editingIdEl.value.trim() : '';
     if (!box) return;
-    var list = loadExisting();
+    var list = loadExisting().filter(matchesListFilter);
     box.innerHTML = '';
+    if (list.length === 0) {
+      var emptyMsg = document.createElement('p');
+      emptyMsg.className = 'existing-list-empty';
+      emptyMsg.textContent = listFilter === 'all'
+        ? '尚無本機開團資料，請在下方表單新增。'
+        : '此篩選條件下沒有商品，可改選其他篩選或從試算表載入。';
+      box.appendChild(emptyMsg);
+    }
     list.forEach(function (item) {
-      var statusTxt = { upcoming: '即將開團', ongoing: '正在開團', ended: '已結團' }[item.status] || item.status;
-      var meta = [item.startDate, item.endDate, statusTxt].filter(Boolean).join(' · ');
+      var statusKey = normalizeStatusForForm(item.status);
+      var statusTxt = { upcoming: '即將開團', ongoing: '正在開團', ended: '已結團' }[statusKey] || item.status;
+      var resultTxt = statusKey === 'ended' ? openResultLabel(inferOpenResult(item)) : '';
+      var meta = [toInputDateString(item.startDate), toInputDateString(item.endDate), statusTxt, resultTxt].filter(Boolean).join(' · ');
       var div = document.createElement('div');
       div.className = 'existing-item';
       div.innerHTML =
@@ -187,11 +292,15 @@
     var badge = (item.badge === 'new' || item.badge === 'recommend' || item.badge === 'ichibansho') ? item.badge : 'hot';
     var badgeEl = form.querySelector('input[name="badge"][value="' + badge + '"]');
     if (badgeEl) badgeEl.checked = true;
-    form.startDate.value = item.startDate || '';
-    form.endDate.value = item.endDate || '';
-    var status = (item.status === 'upcoming' || item.status === 'ended') ? item.status : 'ongoing';
+    form.startDate.value = toInputDateString(item.startDate);
+    form.endDate.value = toInputDateString(item.endDate);
+    var status = normalizeStatusForForm(item.status);
     var statusEl = form.querySelector('input[name="status"][value="' + status + '"]');
     if (statusEl) statusEl.checked = true;
+    var openResult = inferOpenResult(item);
+    var openResultEl = form.querySelector('input[name="openResult"][value="' + (openResult || 'success') + '"]');
+    if (openResultEl) openResultEl.checked = true;
+    toggleOpenResultRow();
     form.registeredCount.value = (item.registeredCount != null && item.registeredCount !== '') ? String(item.registeredCount) : '';
     var progressNames = ['收單中', '等待出荷', '集運中', '抵台', '已完成出貨'];
     var progress = item.progress || [];
@@ -202,20 +311,8 @@
         el.checked = !!(p && p.done);
       }
     });
-    var ct = item.countdownTo;
-    if (ct) {
-      try {
-        var d = new Date(ct);
-        if (!isNaN(d.getTime())) {
-          var y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
-          var h = String(d.getHours()).padStart(2, '0'), min = String(d.getMinutes()).padStart(2, '0');
-          form.countdownTo.value = y + '-' + m + '-' + day + 'T' + h + ':' + min;
-        } else { form.countdownTo.value = ''; }
-      } catch (_) { form.countdownTo.value = ''; }
-    } else {
-      form.countdownTo.value = '';
-    }
-    if (form.expectedShipDate) form.expectedShipDate.value = item.expectedShipDate || '';
+    form.countdownTo.value = toInputDateTimeLocal(item.countdownTo);
+    if (form.expectedShipDate) form.expectedShipDate.value = toInputDateString(item.expectedShipDate);
     if (form.shipDelayDays) form.shipDelayDays.value = (item.shipDelayDays != null && item.shipDelayDays !== '') ? String(item.shipDelayDays) : '';
     var editingIdEl = document.getElementById('editingId');
     if (editingIdEl) editingIdEl.value = id;
@@ -275,10 +372,7 @@
           return;
         }
         function normalizeDateForMatch(val) {
-          if (val == null || val === '') return '';
-          var s = String(val).trim();
-          var part = s.indexOf('T') >= 0 ? s.split('T')[0] : s;
-          return part.replace(/\//g, '-');
+          return toInputDateString(val);
         }
         var existing = loadExisting();
         var updated = 0;
@@ -295,16 +389,20 @@
             title: row.title,
             imageUrl: row.imageUrl || null,
             badge: row.badge || 'hot',
-            startDate: row.startDate,
-            endDate: row.endDate,
+            startDate: toInputDateString(row.startDate) || null,
+            endDate: toInputDateString(row.endDate) || null,
             registeredCount: row.registeredCount != null ? row.registeredCount : null,
-            status: row.status || 'ongoing',
+            status: normalizeStatusForForm(row.status),
+            openResult: normalizeOpenResult(row.openResult) || null,
             progress: Array.isArray(row.progress) ? row.progress : [],
             countdownTo: row.countdownTo || null,
-            expectedShipDate: row.expectedShipDate || null,
+            expectedShipDate: toInputDateString(row.expectedShipDate) || null,
             shipDelayDays: row.shipDelayDays != null ? row.shipDelayDays : null,
             sheetRowIndex: sheetRowIndex
           };
+          if (normalizeStatusForForm(payload.status) === 'ended' && !payload.openResult) {
+            payload.openResult = inferOpenResult(payload);
+          }
           var idxById = existing.findIndex(function (item) { return item.id === id; });
           if (idxById >= 0) {
             existing[idxById] = Object.assign({}, existing[idxById], payload);
@@ -389,6 +487,7 @@
     params.append('countdownTo', payload.countdownTo || '');
     params.append('expectedShipDate', payload.expectedShipDate || '');
     params.append('shipDelayDays', payload.shipDelayDays != null ? String(payload.shipDelayDays) : '');
+    params.append('openResult', payload.openResult || '');
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -440,6 +539,7 @@
     params.append('countdownTo', payload.countdownTo || '');
     params.append('expectedShipDate', payload.expectedShipDate || '');
     params.append('shipDelayDays', payload.shipDelayDays != null ? String(payload.shipDelayDays) : '');
+    params.append('openResult', payload.openResult || '');
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -567,12 +667,27 @@
   var existingListSection = document.getElementById('existingListSection');
   if (existingListSection) {
     existingListSection.addEventListener('click', function (e) {
+      var filterBtn = e.target && e.target.closest && e.target.closest('.existing-filter-btn');
+      if (filterBtn) {
+        e.preventDefault();
+        listFilter = filterBtn.dataset.filter || 'all';
+        existingListSection.querySelectorAll('.existing-filter-btn').forEach(function (b) {
+          b.classList.toggle('active', b === filterBtn);
+        });
+        renderExistingList();
+        return;
+      }
       if (e.target && e.target.id === 'loadFromSheetBtn') {
         e.preventDefault();
         loadFromSheet();
       }
     });
   }
+
+  document.querySelectorAll('input[name="status"]').forEach(function (el) {
+    el.addEventListener('change', toggleOpenResultRow);
+  });
+  toggleOpenResultRow();
 
   var scriptInput = document.getElementById('scriptUrl');
   if (scriptInput) {
