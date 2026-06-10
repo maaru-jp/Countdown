@@ -43,6 +43,17 @@
 #loadFromSheetBtn {
   margin-bottom: 0.75rem;
 }
+.existing-list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+.existing-filter-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--tab-active, var(--text));
+}
 .existing-list-box {
   display: flex;
   flex-direction: column;
@@ -50,10 +61,10 @@
   max-height: 220px;
   overflow-y: auto;
 }
-.existing-list-box:empty::before {
-  content: "尚無本機開團資料，請在下方表單新增。";
+.existing-list-empty {
   color: var(--text-muted);
   font-size: 0.9rem;
+  margin: 0;
 }
 .existing-item {
   display: flex;
