@@ -53,6 +53,7 @@
       id: '4',
       title: '冬季保暖小物團',
       status: 'ended',
+      openResult: 'success',
       badge: 'hot',
       imageUrl: 'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=400',
       startDate: '2025-01-05',
@@ -75,9 +76,32 @@
 
   let allProducts = [];
   let currentFilter = 'upcoming';
+  let currentEndedFilter = 'success';
   let currentTheme = 'dawn';
   let currentPage = 1;
   const PER_PAGE = 9;
+
+  function normalizeOpenResult(val) {
+    var s = String(val || '').trim();
+    if (s === 'success' || s === '成功開團' || s === '成功') return 'success';
+    if (s === 'failed' || s === '未成團' || s === '失敗' || s === '未成功') return 'failed';
+    return '';
+  }
+
+  function inferOpenResult(p) {
+    if (resolveStatusByDate(p) !== 'ended') return '';
+    var explicit = normalizeOpenResult(p.openResult);
+    if (explicit) return explicit;
+    var progress = p.progress || [];
+    var ordered = progress.find(function (n) { return n.name === '收單中' && n.done; });
+    if (ordered || (p.registeredCount != null && p.registeredCount > 0)) return 'success';
+    return 'failed';
+  }
+
+  function matchesEndedSubFilter(p) {
+    if (currentEndedFilter === 'all') return true;
+    return inferOpenResult(p) === currentEndedFilter;
+  }
 
   function loadData() {
     try {
@@ -183,7 +207,11 @@
   }
 
   function getFiltered() {
-    var list = allProducts.filter(function (p) { return resolveStatusByDate(p) === currentFilter; });
+    var list = allProducts.filter(function (p) {
+      if (resolveStatusByDate(p) !== currentFilter) return false;
+      if (currentFilter === 'ended') return matchesEndedSubFilter(p);
+      return true;
+    });
     list = list.slice().sort(function (a, b) {
       var da = a.startDate || '';
       var db = b.startDate || '';
@@ -240,6 +268,7 @@
 
     if (fullList.length === 0) {
       empty.hidden = false;
+      empty.textContent = getEmptyStateMessage();
       if (paginationWrap) { paginationWrap.innerHTML = ''; paginationWrap.hidden = true; }
       return;
     }
@@ -248,7 +277,14 @@
 
     list.forEach(function (p) {
       const card = document.createElement('article');
+      var statusForCountdown = resolveStatusByDate(p);
+      var endedResult = statusForCountdown === 'ended' ? inferOpenResult(p) : '';
+      var isEndedSuccess = endedResult === 'success';
+      var isEndedFailed = endedResult === 'failed';
+
       card.className = 'product-card';
+      if (isEndedSuccess) card.classList.add('product-card--ended-success');
+      if (isEndedFailed) card.classList.add('product-card--ended-failed');
       card.dataset.id = p.id;
       if (p.expectedShipDate != null && String(p.expectedShipDate).trim() !== '') {
         card.dataset.expectedShipDate = String(p.expectedShipDate).trim();
@@ -259,9 +295,20 @@
       const badgeClass = (p.badge === 'new' ? 'new' : p.badge === 'hot' ? 'hot' : p.badge === 'ichibansho' ? 'ichibansho' : 'recommend');
       const badgeText = (p.badge === 'new' ? '新品' : p.badge === 'hot' ? '熱銷' : p.badge === 'ichibansho' ? '一番賞' : '推薦');
 
-      let progressHtml = '';
-      if (p.progress && p.progress.length) {
-        var currentIdx = (p.status === 'ended') ? -1 : p.progress.findIndex(function (n) { return !n.done; });
+      var resultBadgeHtml = '';
+      if (isEndedSuccess) {
+        resultBadgeHtml = '<span class="card-result-badge card-result-badge--success">成功結團</span>';
+      } else if (isEndedFailed) {
+        resultBadgeHtml = '<span class="card-result-badge card-result-badge--failed">未成團</span>';
+      }
+
+      var progressHtml = '';
+      var progressWrapClass = 'progress-wrap';
+      if (isEndedFailed) {
+        progressWrapClass += ' progress-wrap--failed';
+        progressHtml = '<p class="card-ended-note">此團已結束，未成功開團</p>';
+      } else if (p.progress && p.progress.length) {
+        var currentIdx = statusForCountdown === 'ended' ? -1 : p.progress.findIndex(function (n) { return !n.done; });
         progressHtml = '<div class="progress-steps">' + p.progress.map(function (node, i) {
           var c = node.done ? 'passed' : (i === currentIdx) ? 'current' : 'pending';
           var icon = getProgressIcon(node.name);
@@ -269,7 +316,6 @@
         }).join('') + '</div>';
       }
 
-      var statusForCountdown = resolveStatusByDate(p);
       var countdownParts = [];
       if (statusForCountdown === 'upcoming') {
         var startDateStr = toDateOnlyString(p.startDate);
@@ -290,15 +336,10 @@
           if (cdEnd && !cdEnd.done) {
             countdownParts.push('<div class="countdown" data-countdown-type="end">結團時間：<span>' + cdEnd.text + '</span></div>');
           } else if (cdEnd && cdEnd.done) {
-            // 即使倒數到期，也維持顯示「結團時間」這行，讓正在開團卡片仍看得到結團時間倒數
             countdownParts.push('<div class="countdown countdown-done" data-countdown-type="end">結團時間：<span>' + cdEnd.text + '</span></div>');
           }
         }
-      } else {
-        countdownParts.push('<div class="countdown countdown-done">已結團</div>');
-      }
-      // 只在「已結團」頁顯示出貨倒數，避免正在開團/即將開團也跳出出貨倒數造成混淆
-      if (statusForCountdown === 'ended') {
+      } else if (isEndedSuccess) {
         var shipTarget = getShipCountdownTarget(p);
         if (shipTarget) {
           var cdShip = getCountdown(shipTarget);
@@ -314,16 +355,20 @@
       var imageHtml = '';
       if (p.imageUrl && p.imageUrl.trim()) {
         var safeUrl = escapeHtml(p.imageUrl.trim());
-        imageHtml = '<div class="card-image-wrap"><img src="' + safeUrl + '" alt="" class="card-image" loading="lazy" /></div>';
+        var imgWrapClass = 'card-image-wrap' + (isEndedFailed ? ' card-image-wrap--muted' : '');
+        imageHtml = '<div class="' + imgWrapClass + '"><img src="' + safeUrl + '" alt="" class="card-image" loading="lazy" /></div>';
       }
 
       var registeredHtml = '';
-      if (p.registeredCount != null && p.registeredCount > 0) {
+      if (!isEndedFailed && p.registeredCount != null && p.registeredCount > 0) {
         registeredHtml = '<div class="card-registered">共 ' + String(p.registeredCount) + ' 位登記預購</div>';
       }
 
+      var progressLabelHtml = isEndedFailed ? '' : '<div class="progress-label">進度</div>';
+
       card.innerHTML =
         '<span class="card-badge ' + badgeClass + '">' + badgeText + '</span>' +
+        resultBadgeHtml +
         imageHtml +
         '<h3 class="card-title">' + escapeHtml(p.title) + '</h3>' +
         '<div class="card-dates">' +
@@ -331,8 +376,8 @@
         '<span>結團 ' + formatDate(p.endDate) + '</span>' +
         '</div>' +
         registeredHtml +
-        '<div class="progress-wrap">' +
-        '<div class="progress-label">進度</div>' +
+        '<div class="' + progressWrapClass + '">' +
+        progressLabelHtml +
         progressHtml +
         countdownHtml +
         '</div>';
@@ -401,17 +446,64 @@
     return div.innerHTML;
   }
 
+  function updateEndedSubTabsVisibility() {
+    var sub = document.getElementById('endedSubTabs');
+    if (!sub) return;
+    sub.hidden = currentFilter !== 'ended';
+  }
+
+  function syncEndedSubTabUi() {
+    var sub = document.getElementById('endedSubTabs');
+    if (!sub) return;
+    sub.querySelectorAll('.tab[data-ended-filter]').forEach(function (b) {
+      var on = b.dataset.endedFilter === currentEndedFilter;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+
+  function getEmptyStateMessage() {
+    if (currentFilter === 'ended') {
+      if (currentEndedFilter === 'success') return '此分類暫無成功結團商品';
+      if (currentEndedFilter === 'failed') return '此分類暫無未成團商品';
+      return '此分類暫無已結團商品';
+    }
+    if (currentFilter === 'ongoing') return '此分類暫無正在開團商品';
+    if (currentFilter === 'upcoming') return '此分類暫無即將開團商品';
+    return '此分類暫無商品';
+  }
+
   function bindTabs() {
-    document.querySelectorAll('.tab').forEach(function (btn) {
+    document.querySelectorAll('.tabs:not(.tabs--sub) .tab[data-filter]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         const filter = this.dataset.filter;
         if (filter === currentFilter) return;
         currentFilter = filter;
         currentPage = 1;
-        document.querySelectorAll('.tab').forEach(function (b) {
+        if (filter === 'ended') {
+          currentEndedFilter = 'success';
+          syncEndedSubTabUi();
+        }
+        document.querySelectorAll('.tabs:not(.tabs--sub) .tab[data-filter]').forEach(function (b) {
           b.classList.toggle('active', b.dataset.filter === filter);
           b.setAttribute('aria-selected', b.dataset.filter === filter ? 'true' : 'false');
         });
+        updateEndedSubTabsVisibility();
+        renderCards();
+      });
+    });
+  }
+
+  function bindEndedSubTabs() {
+    var sub = document.getElementById('endedSubTabs');
+    if (!sub) return;
+    sub.querySelectorAll('.tab[data-ended-filter]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var f = this.dataset.endedFilter;
+        if (!f || f === currentEndedFilter) return;
+        currentEndedFilter = f;
+        currentPage = 1;
+        syncEndedSubTabUi();
         renderCards();
       });
     });
@@ -517,8 +609,15 @@
     fetch(mainUrl)
       .then(function (r) { return r.json(); })
       .then(function (data1) {
-        allProducts = Array.isArray(data1) ? data1 : [];
-        if (allProducts.length) saveData();
+        // 試算表回傳錯誤或空陣列時，不覆蓋本機既有資料（避免商品卡全部消失）
+        if (data1 && !Array.isArray(data1) && data1.error) {
+          if (cb) cb();
+          return;
+        }
+        if (Array.isArray(data1) && data1.length > 0) {
+          allProducts = data1;
+          saveData();
+        }
         if (cb) cb();
       })
       .catch(function () {
@@ -541,6 +640,8 @@
       });
     }
     bindTabs();
+    bindEndedSubTabs();
+    updateEndedSubTabsVisibility();
     bindTheme();
     renderCards();
     tickCountdown();
