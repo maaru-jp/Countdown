@@ -1,7 +1,7 @@
 // 複製此檔案內容到 Google Apps Script 編輯器，並將 SPREADSHEET_ID 改為你的試算表 ID
 // 詳見 GoogleAppsScript.md
 
-const SPREADSHEET_ID = '1aUzAPcHtrsxufOSumJPdWgiOUZLkPi2BHQadofrmdxg';
+const SPREADSHEET_ID = '你的試算表ID';
 
 /** 將試算表日期欄位轉成 YYYY-MM-DD 字串（供前台與後台 date input 使用） */
 function formatDateOnlyCell(val) {
@@ -36,8 +36,16 @@ function normalizeOpenResultCell(val) {
   return '';
 }
 
+/** 開團地區：jp（日本）/ kr（韓國） */
+function normalizeRegionCell(val) {
+  var s = String(val || '').trim().toLowerCase();
+  if (s === 'jp' || s === 'japan' || s === '日本' || s === '日本開團') return 'jp';
+  if (s === 'kr' || s === 'korea' || s === '韓國' || s === '韓國開團') return 'kr';
+  return '';
+}
+
 function buildRowValues(p) {
-  var progressStr = p.progress || '[]';
+  var progressStr = Array.isArray(p.progress) ? JSON.stringify(p.progress) : (p.progress || '[]');
   var statusStr = String(p.status || '').trim();
   var openResult = '';
   if (statusStr === 'ended' || statusStr === '已結團') {
@@ -56,7 +64,8 @@ function buildRowValues(p) {
     p.expectedShipDate || '',
     p.shipDelayDays !== undefined && p.shipDelayDays !== null && p.shipDelayDays !== '' ? String(p.shipDelayDays) : '',
     new Date().toISOString(),
-    openResult
+    openResult,
+    normalizeRegionCell(p.region)
   ];
 }
 
@@ -139,7 +148,7 @@ function doPost(e) {
       if (rowIndex > lastRow) {
         return ContentService.createTextOutput(JSON.stringify({ ok: false, error: '該列不存在' })).setMimeType(ContentService.MimeType.JSON);
       }
-      sheet.getRange(rowIndex, 1, rowIndex, values.length).setValues([values]);
+      sheet.getRange(rowIndex, 1, 1, values.length).setValues([values]);
       return ContentService.createTextOutput(JSON.stringify({ ok: true, message: '已更新試算表「' + sheet.getName() + '」第 ' + rowIndex + ' 列' })).setMimeType(ContentService.MimeType.JSON);
     }
     if (String(p.action) === 'append') {
@@ -194,10 +203,10 @@ function doGet(e) {
   try {
     var ee = e || {};
     var params = ee.parameter || {};
+    if (!SPREADSHEET_ID || SPREADSHEET_ID === '你的試算表ID') {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: '請在 Apps Script 程式碼中設定 SPREADSHEET_ID 為你的試算表 ID，並重新部署' })).setMimeType(ContentService.MimeType.JSON);
+    }
     if (params.action === 'test') {
-      if (!SPREADSHEET_ID || SPREADSHEET_ID === '你的試算表ID') {
-        return ContentService.createTextOutput(JSON.stringify({ ok: false, error: '請設定 SPREADSHEET_ID' })).setMimeType(ContentService.MimeType.JSON);
-      }
       var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       var sheet = ss.getSheets()[0];
       var rows = sheet.getLastRow() || 0;
@@ -282,6 +291,7 @@ function doGet(e) {
         }
       }
       var openResult = row.length > 12 ? normalizeOpenResultCell(row[12]) : '';
+      var region = row.length > 13 ? normalizeRegionCell(row[13]) : '';
       return {
         id: id,
         title: row[0],
@@ -296,7 +306,8 @@ function doGet(e) {
         expectedShipDate: expectedShipDate,
         shipDelayDays: shipDelayDays,
         listedAt: listedAt,
-        openResult: openResult || null
+        openResult: openResult || null,
+        region: region || null
       };
     });
     return ContentService.createTextOutput(JSON.stringify(list)).setMimeType(ContentService.MimeType.JSON);
