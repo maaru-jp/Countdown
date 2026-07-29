@@ -31,23 +31,34 @@
       </a>
     </div>
 
-    <nav class="region-tabs" id="regionTabs" role="tablist" aria-label="開團地區">
-      <button type="button" class="region-tab active" role="tab" aria-selected="true" data-region-filter="all">全部</button>
-      <button type="button" class="region-tab region-tab--jp" role="tab" aria-selected="false" data-region-filter="jp">日本開團</button>
-      <button type="button" class="region-tab region-tab--kr" role="tab" aria-selected="false" data-region-filter="kr">韓國開團</button>
-    </nav>
+    <section class="filter-panel" aria-label="商品分類篩選">
+      <div class="filter-group filter-group--region">
+        <div class="filter-group-label">開團地區</div>
+        <nav class="region-tabs" id="regionTabs" role="tablist" aria-label="開團地區">
+          <button type="button" class="region-tab active" role="tab" aria-selected="true" data-region-filter="all">全部</button>
+          <button type="button" class="region-tab region-tab--jp" role="tab" aria-selected="false" data-region-filter="jp">日本開團</button>
+          <button type="button" class="region-tab region-tab--kr" role="tab" aria-selected="false" data-region-filter="kr">韓國開團</button>
+        </nav>
+      </div>
 
-    <nav class="tabs" role="tablist" aria-label="開團狀態">
-      <button type="button" class="tab active" role="tab" aria-selected="true" data-filter="upcoming">即將開團</button>
-      <button type="button" class="tab" role="tab" aria-selected="false" data-filter="ongoing">正在開團</button>
-      <button type="button" class="tab" role="tab" aria-selected="false" data-filter="ended">已結團</button>
-    </nav>
+      <div class="filter-group">
+        <div class="filter-group-label">開團狀態</div>
+        <nav class="tabs" role="tablist" aria-label="開團狀態">
+          <button type="button" class="tab active" role="tab" aria-selected="true" data-filter="upcoming">即將開團</button>
+          <button type="button" class="tab" role="tab" aria-selected="false" data-filter="ongoing">正在開團</button>
+          <button type="button" class="tab" role="tab" aria-selected="false" data-filter="ended">已結團</button>
+        </nav>
+      </div>
 
-    <nav class="tabs tabs--sub" id="endedSubTabs" role="tablist" aria-label="已結團子分類" hidden>
-      <button type="button" class="tab tab--sub" role="tab" aria-selected="false" data-ended-filter="all">全部</button>
-      <button type="button" class="tab tab--sub active" role="tab" aria-selected="true" data-ended-filter="success">成功結團</button>
-      <button type="button" class="tab tab--sub" role="tab" aria-selected="false" data-ended-filter="failed">未成團</button>
-    </nav>
+      <div class="filter-group filter-group--sub" id="endedSubGroup" hidden>
+        <div class="filter-group-label">結團結果</div>
+        <nav class="tabs tabs--sub" id="endedSubTabs" role="tablist" aria-label="已結團子分類">
+          <button type="button" class="tab tab--sub" role="tab" aria-selected="false" data-ended-filter="all">全部</button>
+          <button type="button" class="tab tab--sub active" role="tab" aria-selected="true" data-ended-filter="success">成功結團</button>
+          <button type="button" class="tab tab--sub" role="tab" aria-selected="false" data-ended-filter="failed">未成團</button>
+        </nav>
+      </div>
+    </section>
 
     <section class="cards-section" role="tabpanel">
       <div class="cards-grid" id="cardsGrid">
