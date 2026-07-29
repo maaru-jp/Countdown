@@ -219,22 +219,56 @@ body {
 }
 
 /* ========== 分類按鈕 ========== */
+.filter-panel {
+  max-width: 760px;
+  margin: 0 auto 2rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius) + 4px);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.filter-group {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filter-group + .filter-group {
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.filter-group[hidden] {
+  display: none;
+}
+
+.filter-group-label {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: right;
+}
+
 .region-tabs {
   display: flex;
-  justify-content: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
+  justify-content: flex-start;
+  gap: 0.5rem;
 }
 
 .region-tab {
-  min-width: 7.5rem;
+  flex: 1 1 0;
+  min-width: 0;
   font-family: var(--font-sans);
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   font-weight: 600;
-  padding: 0.85rem 1.6rem;
+  padding: 0.72rem 0.8rem;
   border: 1px solid var(--glass-border);
-  border-radius: calc(var(--radius) + 2px);
+  border-radius: var(--radius);
   background: var(--glass-bg);
   color: var(--text-muted);
   cursor: pointer;
@@ -253,7 +287,7 @@ body {
   color: var(--tab-active);
   border-color: var(--accent);
   background: var(--accent-soft);
-  box-shadow: 0 0 0 1px var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .region-tab:focus-visible {
@@ -263,27 +297,27 @@ body {
 
 .region-tab--jp.active {
   border-color: rgba(244, 114, 182, 0.75);
-  box-shadow: 0 0 0 1px rgba(244, 114, 182, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(244, 114, 182, 0.55);
 }
 
 .region-tab--kr.active {
   border-color: rgba(99, 102, 241, 0.75);
-  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.55);
 }
 
 .tabs {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 2rem;
 }
 
 .tab {
+  flex: 1 1 0;
+  min-width: 0;
   font-family: var(--font-sans);
-  font-size: 1rem;
+  font-size: 0.94rem;
   font-weight: 500;
-  padding: 0.75rem 1.5rem;
+  padding: 0.68rem 0.75rem;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   background: var(--glass-bg);
@@ -307,23 +341,7 @@ body {
   background: var(--accent-soft);
   color: var(--tab-active);
   border-color: var(--accent);
-}
-
-.tabs--sub {
-  margin-top: -1rem;
-  margin-bottom: 1.5rem;
-}
-.tabs--sub[hidden] {
-  display: none;
-}
-.tab--sub {
-  font-size: 0.9rem;
-  padding: 0.5rem 1rem;
-}
-.tab--sub.active {
-  background: var(--accent-soft);
-  color: var(--tab-active);
-  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 /* ========== 商品卡區 ========== */
@@ -613,6 +631,26 @@ body {
 }
 
 @media (max-width: 600px) {
+  .filter-panel {
+    margin-bottom: 1.5rem;
+    padding: 0.85rem;
+  }
+
+  .filter-group {
+    display: block;
+  }
+
+  .filter-group + .filter-group {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+  }
+
+  .filter-group-label {
+    margin-bottom: 0.45rem;
+    font-size: 0.72rem;
+    text-align: left;
+  }
+
   .region-tabs {
     gap: 0.45rem;
   }
@@ -620,9 +658,19 @@ body {
   .region-tab {
     min-width: auto;
     flex: 1 1 30%;
-    font-size: 0.92rem;
-    padding: 0.7rem 0.55rem;
+    font-size: 0.88rem;
+    padding: 0.65rem 0.4rem;
   }
+
+  .tabs {
+    gap: 0.4rem;
+  }
+
+  .tab {
+    font-size: 0.84rem;
+    padding: 0.62rem 0.35rem;
+  }
+
 }
 
 .card-dates {
