@@ -90,6 +90,20 @@
     return '';
   }
 
+  function normalizeRegion(val) {
+    var s = String(val || '').trim().toLowerCase();
+    if (s === 'jp' || s === 'japan' || s === '日本' || s === '日本開團') return 'jp';
+    if (s === 'kr' || s === 'korea' || s === '韓國' || s === '韓國開團') return 'kr';
+    return '';
+  }
+
+  function regionLabel(val) {
+    var region = normalizeRegion(val);
+    if (region === 'jp') return '日本開團';
+    if (region === 'kr') return '韓國開團';
+    return '地區未設定';
+  }
+
   function inferOpenResult(item) {
     if (normalizeStatusForForm(item.status) !== 'ended') return '';
     var explicit = normalizeOpenResult(item.openResult);
@@ -138,6 +152,7 @@
     var startDate = form.startDate.value;
     var endDate = form.endDate.value;
     var badge = (form.querySelector('input[name="badge"]:checked') || {}).value || 'hot';
+    var region = normalizeRegion((form.querySelector('input[name="region"]:checked') || {}).value);
     var status = (form.querySelector('input[name="status"]:checked') || {}).value || 'ongoing';
     var rawCount = form.registeredCount && form.registeredCount.value ? form.registeredCount.value.trim() : '';
     var registeredCount = rawCount === '' ? null : Math.max(0, parseInt(rawCount, 10) || 0);
@@ -161,6 +176,7 @@
       startDate: startDate,
       endDate: endDate,
       badge: badge,
+      region: region,
       status: status,
       openResult: getOpenResultFromForm(form),
       registeredCount: registeredCount,
@@ -180,6 +196,7 @@
       status: data.status,
       openResult: data.openResult || null,
       badge: data.badge,
+      region: data.region || null,
       startDate: data.startDate,
       endDate: data.endDate,
       registeredCount: data.registeredCount != null ? data.registeredCount : null,
@@ -249,7 +266,7 @@
       var statusKey = normalizeStatusForForm(item.status);
       var statusTxt = { upcoming: '即將開團', ongoing: '正在開團', ended: '已結團' }[statusKey] || item.status;
       var resultTxt = statusKey === 'ended' ? openResultLabel(inferOpenResult(item)) : '';
-      var meta = [toInputDateString(item.startDate), toInputDateString(item.endDate), statusTxt, resultTxt].filter(Boolean).join(' · ');
+      var meta = [regionLabel(item.region), toInputDateString(item.startDate), toInputDateString(item.endDate), statusTxt, resultTxt].filter(Boolean).join(' · ');
       var div = document.createElement('div');
       div.className = 'existing-item';
       div.innerHTML =
@@ -292,6 +309,10 @@
     var badge = (item.badge === 'new' || item.badge === 'recommend' || item.badge === 'ichibansho') ? item.badge : 'hot';
     var badgeEl = form.querySelector('input[name="badge"][value="' + badge + '"]');
     if (badgeEl) badgeEl.checked = true;
+    var region = normalizeRegion(item.region);
+    form.querySelectorAll('input[name="region"]').forEach(function (el) {
+      el.checked = el.value === region;
+    });
     form.startDate.value = toInputDateString(item.startDate);
     form.endDate.value = toInputDateString(item.endDate);
     var status = normalizeStatusForForm(item.status);
@@ -345,8 +366,9 @@
       return;
     }
     url = url.trim().replace(/\/$/, '');
+    var getUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'action=get';
     if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
-    fetch(url, { method: 'GET', mode: 'cors' })
+    fetch(getUrl, { method: 'GET', mode: 'cors' })
       .then(function (res) {
         if (!res.ok) {
           throw new Error('伺服器回傳 ' + res.status + '，請確認 Apps Script 網址與試算表 ID 是否正確。');
@@ -362,13 +384,16 @@
         }
         if (!Array.isArray(list)) {
           if (list && list.error) {
-            throw new Error('試算表回報：' + (list.error || '未知錯誤'));
+            throw new Error(list.error || '試算表連線失敗');
           }
-          throw new Error('試算表目前沒有資料或回傳格式不符。');
+          if (list && list.ok === false && list.error) {
+            throw new Error(list.error);
+          }
+          throw new Error('試算表回傳格式不符，請確認 Apps Script 已部署為網路應用程式。');
         }
         if (list.length === 0) {
           resetBtn();
-          showMessage('試算表目前沒有資料（至少需有一列標題與一列資料）。', 'success');
+          showMessage('試算表目前沒有資料（至少需有一列標題與一列資料）。若試算表明明有資料，請檢查 Apps Script 是否已設定 SPREADSHEET_ID 並「重新部署」。', 'error');
           return;
         }
         function normalizeDateForMatch(val) {
@@ -389,6 +414,7 @@
             title: row.title,
             imageUrl: row.imageUrl || null,
             badge: row.badge || 'hot',
+            region: normalizeRegion(row.region) || null,
             startDate: toInputDateString(row.startDate) || null,
             endDate: toInputDateString(row.endDate) || null,
             registeredCount: row.registeredCount != null ? row.registeredCount : null,
@@ -479,6 +505,7 @@
     params.append('title', payload.title || '');
     params.append('imageUrl', payload.imageUrl || '');
     params.append('badge', payload.badge || 'hot');
+    params.append('region', payload.region || '');
     params.append('startDate', payload.startDate || '');
     params.append('endDate', payload.endDate || '');
     params.append('registeredCount', payload.registeredCount != null ? String(payload.registeredCount) : '');
@@ -531,6 +558,7 @@
     params.append('title', payload.title || '');
     params.append('imageUrl', payload.imageUrl || '');
     params.append('badge', payload.badge || 'hot');
+    params.append('region', payload.region || '');
     params.append('startDate', payload.startDate || '');
     params.append('endDate', payload.endDate || '');
     params.append('registeredCount', payload.registeredCount != null ? String(payload.registeredCount) : '');
@@ -567,8 +595,8 @@
   document.getElementById('groupForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var data = getFormData();
-    if (!data.title || !data.startDate || !data.endDate) {
-      showMessage('請填寫商品名稱、開團日期與結團日期。', 'error');
+    if (!data.title || !data.region || !data.startDate || !data.endDate) {
+      showMessage('請填寫商品名稱、開團地區、開團日期與結團日期。', 'error');
       return;
     }
     var editingIdEl = document.getElementById('editingId');
@@ -614,8 +642,8 @@
 
   document.getElementById('saveLocalBtn').addEventListener('click', function () {
     var data = getFormData();
-    if (!data.title || !data.startDate || !data.endDate) {
-      showMessage('請填寫商品名稱、開團日期與結團日期。', 'error');
+    if (!data.title || !data.region || !data.startDate || !data.endDate) {
+      showMessage('請填寫商品名稱、開團地區、開團日期與結團日期。', 'error');
       return;
     }
     var editingIdEl = document.getElementById('editingId');

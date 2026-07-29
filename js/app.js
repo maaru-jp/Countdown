@@ -17,6 +17,7 @@
     {
       id: '1',
       title: '日本直送草莓禮盒',
+      region: 'jp',
       status: 'upcoming',
       badge: 'new',
       imageUrl: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400',
@@ -28,6 +29,7 @@
     {
       id: '2',
       title: '韓國美妝熱銷組',
+      region: 'kr',
       status: 'ongoing',
       badge: 'hot',
       imageUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400',
@@ -40,6 +42,7 @@
     {
       id: '3',
       title: '春日零食大賞',
+      region: 'jp',
       status: 'ongoing',
       badge: 'recommend',
       imageUrl: 'https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?w=400',
@@ -52,6 +55,7 @@
     {
       id: '4',
       title: '冬季保暖小物團',
+      region: 'kr',
       status: 'ended',
       openResult: 'success',
       badge: 'hot',
@@ -64,6 +68,7 @@
     {
       id: '5',
       title: '初春限定和菓子',
+      region: 'jp',
       status: 'upcoming',
       badge: 'recommend',
       imageUrl: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400',
@@ -75,6 +80,7 @@
   ];
 
   let allProducts = [];
+  let currentRegionFilter = 'all';
   let currentFilter = 'upcoming';
   let currentEndedFilter = 'success';
   let currentTheme = 'dawn';
@@ -86,6 +92,25 @@
     if (s === 'success' || s === '成功開團' || s === '成功') return 'success';
     if (s === 'failed' || s === '未成團' || s === '失敗' || s === '未成功') return 'failed';
     return '';
+  }
+
+  function normalizeRegion(val) {
+    var s = String(val || '').trim().toLowerCase();
+    if (s === 'jp' || s === 'japan' || s === '日本' || s === '日本開團') return 'jp';
+    if (s === 'kr' || s === 'korea' || s === '韓國' || s === '韓國開團') return 'kr';
+    return '';
+  }
+
+  function regionLabel(val) {
+    var region = normalizeRegion(val);
+    if (region === 'jp') return '日本';
+    if (region === 'kr') return '韓國';
+    return '';
+  }
+
+  function matchesRegionFilter(p) {
+    if (currentRegionFilter === 'all') return true;
+    return normalizeRegion(p.region) === currentRegionFilter;
   }
 
   function inferOpenResult(p) {
@@ -208,6 +233,7 @@
 
   function getFiltered() {
     var list = allProducts.filter(function (p) {
+      if (!matchesRegionFilter(p)) return false;
       if (resolveStatusByDate(p) !== currentFilter) return false;
       if (currentFilter === 'ended') return matchesEndedSubFilter(p);
       return true;
@@ -294,6 +320,10 @@
 
       const badgeClass = (p.badge === 'new' ? 'new' : p.badge === 'hot' ? 'hot' : p.badge === 'ichibansho' ? 'ichibansho' : 'recommend');
       const badgeText = (p.badge === 'new' ? '新品' : p.badge === 'hot' ? '熱銷' : p.badge === 'ichibansho' ? '一番賞' : '推薦');
+      var region = normalizeRegion(p.region);
+      var regionBadgeHtml = region
+        ? '<span class="card-region-badge card-region-badge--' + region + '">' + regionLabel(region) + '</span>'
+        : '';
 
       var resultBadgeHtml = '';
       if (isEndedSuccess) {
@@ -370,6 +400,7 @@
         '<span class="card-badge ' + badgeClass + '">' + badgeText + '</span>' +
         resultBadgeHtml +
         imageHtml +
+        regionBadgeHtml +
         '<h3 class="card-title">' + escapeHtml(p.title) + '</h3>' +
         '<div class="card-dates">' +
         '<span>開團 ' + formatDate(p.startDate) + '</span>' +
@@ -463,14 +494,36 @@
   }
 
   function getEmptyStateMessage() {
+    var regionName = currentRegionFilter === 'jp'
+      ? '日本開團'
+      : (currentRegionFilter === 'kr' ? '韓國開團' : '');
     if (currentFilter === 'ended') {
-      if (currentEndedFilter === 'success') return '此分類暫無成功結團商品';
-      if (currentEndedFilter === 'failed') return '此分類暫無未成團商品';
-      return '此分類暫無已結團商品';
+      if (currentEndedFilter === 'success') return regionName ? regionName + '目前沒有成功結團商品' : '此分類暫無成功結團商品';
+      if (currentEndedFilter === 'failed') return regionName ? regionName + '目前沒有未成團商品' : '此分類暫無未成團商品';
+      return regionName ? regionName + '目前沒有已結團商品' : '此分類暫無已結團商品';
     }
-    if (currentFilter === 'ongoing') return '此分類暫無正在開團商品';
-    if (currentFilter === 'upcoming') return '此分類暫無即將開團商品';
+    if (currentFilter === 'ongoing') return regionName ? regionName + '目前沒有正在開團商品' : '此分類暫無正在開團商品';
+    if (currentFilter === 'upcoming') return regionName ? regionName + '目前沒有即將開團商品' : '此分類暫無即將開團商品';
     return '此分類暫無商品';
+  }
+
+  function bindRegionTabs() {
+    var tabs = document.getElementById('regionTabs');
+    if (!tabs) return;
+    tabs.querySelectorAll('.region-tab[data-region-filter]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var filter = this.dataset.regionFilter;
+        if (!filter || filter === currentRegionFilter) return;
+        currentRegionFilter = filter;
+        currentPage = 1;
+        tabs.querySelectorAll('.region-tab[data-region-filter]').forEach(function (b) {
+          var active = b.dataset.regionFilter === filter;
+          b.classList.toggle('active', active);
+          b.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        renderCards();
+      });
+    });
   }
 
   function bindTabs() {
@@ -639,6 +692,7 @@
         b.setAttribute('aria-pressed', b.dataset.theme === savedTheme ? 'true' : 'false');
       });
     }
+    bindRegionTabs();
     bindTabs();
     bindEndedSubTabs();
     updateEndedSubTabsVisibility();
