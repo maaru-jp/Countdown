@@ -82,7 +82,6 @@
   let allProducts = [];
   let currentRegionFilter = 'all';
   let currentFilter = 'upcoming';
-  let currentEndedFilter = 'success';
   let currentTheme = 'dawn';
   let currentPage = 1;
   const PER_PAGE = 9;
@@ -121,11 +120,6 @@
     var ordered = progress.find(function (n) { return n.name === '收單中' && n.done; });
     if (ordered || (p.registeredCount != null && p.registeredCount > 0)) return 'success';
     return 'failed';
-  }
-
-  function matchesEndedSubFilter(p) {
-    if (currentEndedFilter === 'all') return true;
-    return inferOpenResult(p) === currentEndedFilter;
   }
 
   function loadData() {
@@ -235,7 +229,6 @@
     var list = allProducts.filter(function (p) {
       if (!matchesRegionFilter(p)) return false;
       if (resolveStatusByDate(p) !== currentFilter) return false;
-      if (currentFilter === 'ended') return matchesEndedSubFilter(p);
       return true;
     });
     list = list.slice().sort(function (a, b) {
@@ -477,29 +470,11 @@
     return div.innerHTML;
   }
 
-  function updateEndedSubTabsVisibility() {
-    var sub = document.getElementById('endedSubTabs');
-    if (!sub) return;
-    sub.hidden = currentFilter !== 'ended';
-  }
-
-  function syncEndedSubTabUi() {
-    var sub = document.getElementById('endedSubTabs');
-    if (!sub) return;
-    sub.querySelectorAll('.tab[data-ended-filter]').forEach(function (b) {
-      var on = b.dataset.endedFilter === currentEndedFilter;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-  }
-
   function getEmptyStateMessage() {
     var regionName = currentRegionFilter === 'jp'
       ? '日本開團'
       : (currentRegionFilter === 'kr' ? '韓國開團' : '');
     if (currentFilter === 'ended') {
-      if (currentEndedFilter === 'success') return regionName ? regionName + '目前沒有成功結團商品' : '此分類暫無成功結團商品';
-      if (currentEndedFilter === 'failed') return regionName ? regionName + '目前沒有未成團商品' : '此分類暫無未成團商品';
       return regionName ? regionName + '目前沒有已結團商品' : '此分類暫無已結團商品';
     }
     if (currentFilter === 'ongoing') return regionName ? regionName + '目前沒有正在開團商品' : '此分類暫無正在開團商品';
@@ -527,36 +502,16 @@
   }
 
   function bindTabs() {
-    document.querySelectorAll('.tabs:not(.tabs--sub) .tab[data-filter]').forEach(function (btn) {
+    document.querySelectorAll('.tabs .tab[data-filter]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         const filter = this.dataset.filter;
         if (filter === currentFilter) return;
         currentFilter = filter;
         currentPage = 1;
-        if (filter === 'ended') {
-          currentEndedFilter = 'success';
-          syncEndedSubTabUi();
-        }
-        document.querySelectorAll('.tabs:not(.tabs--sub) .tab[data-filter]').forEach(function (b) {
+        document.querySelectorAll('.tabs .tab[data-filter]').forEach(function (b) {
           b.classList.toggle('active', b.dataset.filter === filter);
           b.setAttribute('aria-selected', b.dataset.filter === filter ? 'true' : 'false');
         });
-        updateEndedSubTabsVisibility();
-        renderCards();
-      });
-    });
-  }
-
-  function bindEndedSubTabs() {
-    var sub = document.getElementById('endedSubTabs');
-    if (!sub) return;
-    sub.querySelectorAll('.tab[data-ended-filter]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var f = this.dataset.endedFilter;
-        if (!f || f === currentEndedFilter) return;
-        currentEndedFilter = f;
-        currentPage = 1;
-        syncEndedSubTabUi();
         renderCards();
       });
     });
@@ -694,8 +649,6 @@
     }
     bindRegionTabs();
     bindTabs();
-    bindEndedSubTabs();
-    updateEndedSubTabsVisibility();
     bindTheme();
     renderCards();
     tickCountdown();
