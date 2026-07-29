@@ -1,7 +1,7 @@
 // 複製此檔案內容到 Google Apps Script 編輯器，並將 SPREADSHEET_ID 改為你的試算表 ID
 // 詳見 GoogleAppsScript.md
 
-const SPREADSHEET_ID = '你的試算表ID';
+const SPREADSHEET_ID = '1aUzAPcHtrsxufOSumJPdWgiOUZLkPi2BHQadofrmdxg';
 
 /** 將試算表日期欄位轉成 YYYY-MM-DD 字串（供前台與後台 date input 使用） */
 function formatDateOnlyCell(val) {
