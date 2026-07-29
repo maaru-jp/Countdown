@@ -219,6 +219,58 @@ body {
 }
 
 /* ========== 分類按鈕 ========== */
+.region-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.region-tab {
+  min-width: 7.5rem;
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: 0.85rem 1.6rem;
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--glass-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: all var(--transition);
+}
+
+.region-tab:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.12);
+}
+
+.region-tab.active {
+  color: var(--tab-active);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.region-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.region-tab--jp.active {
+  border-color: rgba(244, 114, 182, 0.75);
+  box-shadow: 0 0 0 1px rgba(244, 114, 182, 0.55);
+}
+
+.region-tab--kr.active {
+  border-color: rgba(99, 102, 241, 0.75);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.55);
+}
+
 .tabs {
   display: flex;
   justify-content: center;
@@ -466,6 +518,29 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
+.card-region-badge {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0.55rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.card-region-badge--jp {
+  color: #be185d;
+  background: rgba(244, 114, 182, 0.14);
+  border: 1px solid rgba(244, 114, 182, 0.3);
+}
+
+.card-region-badge--kr {
+  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.13);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+}
+
 .card-image-wrap--muted .card-image {
   filter: grayscale(0.35) brightness(0.92);
 }
@@ -535,6 +610,19 @@ body {
   font-weight: 600;
   line-height: 1.35;
   padding-right: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .region-tabs {
+    gap: 0.45rem;
+  }
+
+  .region-tab {
+    min-width: auto;
+    flex: 1 1 30%;
+    font-size: 0.92rem;
+    padding: 0.7rem 0.55rem;
+  }
 }
 
 .card-dates {
