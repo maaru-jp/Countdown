@@ -82,6 +82,7 @@
   let allProducts = [];
   let currentRegionFilter = 'all';
   let currentFilter = 'upcoming';
+  let currentEndedResultFilter = 'success';
   let currentTheme = 'dawn';
   let currentPage = 1;
   const PER_PAGE = 9;
@@ -229,6 +230,7 @@
     var list = allProducts.filter(function (p) {
       if (!matchesRegionFilter(p)) return false;
       if (resolveStatusByDate(p) !== currentFilter) return false;
+      if (currentFilter === 'ended' && inferOpenResult(p) !== currentEndedResultFilter) return false;
       return true;
     });
     list = list.slice().sort(function (a, b) {
@@ -283,23 +285,22 @@
     return String(b.endDate || '').localeCompare(String(a.endDate || ''));
   }
 
-  function createEndedGroup(title, count, modifier, collapsible, open) {
-    var wrapper = document.createElement(collapsible ? 'details' : 'section');
-    wrapper.className = 'ended-group ended-group--' + modifier;
-    if (collapsible && open) wrapper.open = true;
+  function getVisiblePageNumbers(current, total) {
+    if (total <= 7) {
+      return Array.from({ length: total }, function (_, i) { return i + 1; });
+    }
 
-    var heading = document.createElement(collapsible ? 'summary' : 'div');
-    heading.className = 'ended-group-heading';
-    heading.innerHTML =
-      '<span class="ended-group-title">' + escapeHtml(title) + '</span>' +
-      '<span class="ended-group-count">' + count + '</span>';
-    wrapper.appendChild(heading);
+    var pages = [1];
+    var start = Math.max(2, current - 1);
+    var end = Math.min(total - 1, current + 1);
+    if (current <= 3) end = 4;
+    if (current >= total - 2) start = total - 3;
 
-    var innerGrid = document.createElement('div');
-    innerGrid.className = 'cards-grid ended-group-grid';
-    wrapper.appendChild(innerGrid);
-
-    return { wrapper: wrapper, grid: innerGrid };
+    if (start > 2) pages.push('ellipsis');
+    for (var i = start; i <= end; i++) pages.push(i);
+    if (end < total - 1) pages.push('ellipsis');
+    pages.push(total);
+    return pages;
   }
 
   function renderCards() {
@@ -309,16 +310,17 @@
     if (!grid || !empty) return;
 
     const fullList = getFiltered();
-    var isEndedView = currentFilter === 'ended';
-    const totalPages = isEndedView ? 1 : Math.max(1, Math.ceil(fullList.length / PER_PAGE));
+    var orderedList = fullList.slice();
+    if (currentFilter === 'ended' && currentEndedResultFilter === 'success') {
+      orderedList.sort(sortEndedSuccess);
+    }
+
+    const totalPages = Math.max(1, Math.ceil(orderedList.length / PER_PAGE));
     if (currentPage > totalPages) currentPage = totalPages;
     const start = (currentPage - 1) * PER_PAGE;
-    var list = isEndedView ? fullList.slice() : fullList.slice(start, start + PER_PAGE);
-    var successGrid = null;
-    var failedGrid = null;
+    var list = orderedList.slice(start, start + PER_PAGE);
 
     grid.innerHTML = '';
-    grid.classList.toggle('cards-grid--grouped', isEndedView);
 
     if (fullList.length === 0) {
       empty.hidden = false;
@@ -327,24 +329,7 @@
       return;
     }
     empty.hidden = true;
-    if (paginationWrap) paginationWrap.hidden = isEndedView;
-
-    if (isEndedView) {
-      var successful = list.filter(function (p) { return inferOpenResult(p) === 'success'; }).sort(sortEndedSuccess);
-      var failed = list.filter(function (p) { return inferOpenResult(p) === 'failed'; });
-      list = successful.concat(failed);
-
-      if (successful.length > 0) {
-        var successGroup = createEndedGroup('成功開團', successful.length, 'success', false, true);
-        grid.appendChild(successGroup.wrapper);
-        successGrid = successGroup.grid;
-      }
-      if (failed.length > 0) {
-        var failedGroup = createEndedGroup('未成團紀錄', failed.length, 'failed', true, successful.length === 0);
-        grid.appendChild(failedGroup.wrapper);
-        failedGrid = failedGroup.grid;
-      }
-    }
+    if (paginationWrap) paginationWrap.hidden = totalPages <= 1;
 
     list.forEach(function (p) {
       const card = document.createElement('article');
@@ -458,27 +443,33 @@
         countdownHtml +
         '</div>';
 
-      var targetGrid = isEndedSuccess ? successGrid : (isEndedFailed ? failedGrid : grid);
-      if (targetGrid) targetGrid.appendChild(card);
+      grid.appendChild(card);
     });
 
-    if (paginationWrap && fullList.length > 0 && !isEndedView) {
+    if (paginationWrap && fullList.length > 0 && totalPages > 1) {
       var nav = document.createElement('div');
       nav.className = 'pagination';
-      // 桌機與手機共用：第 1 頁只顯示右箭頭 ›，第 2 頁起顯示左箭頭 ‹，未到最後一頁時右邊也顯示 ›
-      var showPrev = currentPage > 1;
-      var showNext = currentPage < totalPages;
       var parts = [];
-      if (showPrev) {
-        parts.push('<button type="button" class="pagination-arrow pagination-prev" aria-label="上一頁"><svg class="pagination-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>');
-      }
-      for (var i = 1; i <= totalPages; i++) {
-        var isCurrent = i === currentPage;
-        parts.push('<button type="button" class="pagination-btn' + (isCurrent ? ' active' : '') + '" data-page="' + i + '" aria-current="' + (isCurrent ? 'true' : 'false') + '" aria-label="第' + i + '頁">' + i + '</button>');
-      }
-      if (showNext) {
-        parts.push('<button type="button" class="pagination-arrow pagination-next" aria-label="下一頁"><svg class="pagination-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>');
-      }
+      var prevDisabled = currentPage === 1;
+      var nextDisabled = currentPage === totalPages;
+      parts.push('<button type="button" class="pagination-arrow pagination-prev" aria-label="上一頁"' + (prevDisabled ? ' disabled aria-disabled="true" title="目前已是第一頁"' : ' title="上一頁"') + '><svg class="pagination-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>');
+
+      getVisiblePageNumbers(currentPage, totalPages).forEach(function (page) {
+        if (page === 'ellipsis') {
+          parts.push('<span class="pagination-ellipsis" aria-hidden="true">…</span>');
+          return;
+        }
+        var isCurrent = page === currentPage;
+        parts.push('<button type="button" class="pagination-btn' + (isCurrent ? ' active' : '') + '" data-page="' + page + '"' + (isCurrent ? ' disabled aria-current="page"' : '') + ' aria-label="第' + page + '頁">' + page + '</button>');
+      });
+
+      parts.push('<button type="button" class="pagination-arrow pagination-next" aria-label="下一頁"' + (nextDisabled ? ' disabled aria-disabled="true" title="目前已是最後一頁"' : ' title="下一頁"') + '><svg class="pagination-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>');
+      var pageHint = currentPage === 1
+        ? '目前第 1／' + totalPages + ' 頁，請往右查看下一頁'
+        : (currentPage === totalPages
+          ? '目前第 ' + currentPage + '／' + totalPages + ' 頁，可往左返回'
+          : '目前第 ' + currentPage + '／' + totalPages + ' 頁');
+      parts.push('<span class="pagination-status" aria-live="polite">' + pageHint + '</span>');
       nav.innerHTML = parts.join('');
       paginationWrap.innerHTML = '';
       paginationWrap.appendChild(nav);
@@ -528,7 +519,8 @@
       ? '日本開團'
       : (currentRegionFilter === 'kr' ? '韓國開團' : '');
     if (currentFilter === 'ended') {
-      return regionName ? regionName + '目前沒有已結團商品' : '此分類暫無已結團商品';
+      var resultName = currentEndedResultFilter === 'failed' ? '未成團紀錄' : '成功開團紀錄';
+      return regionName ? regionName + '目前沒有' + resultName : '此分類暫無' + resultName;
     }
     if (currentFilter === 'ongoing') return regionName ? regionName + '目前沒有正在開團商品' : '此分類暫無正在開團商品';
     if (currentFilter === 'upcoming') return regionName ? regionName + '目前沒有即將開團商品' : '此分類暫無即將開團商品';
@@ -554,17 +546,46 @@
     });
   }
 
+  function syncEndedResultUi() {
+    var group = document.getElementById('endedResultGroup');
+    var tabs = document.getElementById('endedResultTabs');
+    if (group) group.hidden = currentFilter !== 'ended';
+    if (!tabs) return;
+    tabs.querySelectorAll('.ended-result-tab[data-ended-result]').forEach(function (btn) {
+      var active = btn.dataset.endedResult === currentEndedResultFilter;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+
+  function bindEndedResultTabs() {
+    var tabs = document.getElementById('endedResultTabs');
+    if (!tabs) return;
+    tabs.querySelectorAll('.ended-result-tab[data-ended-result]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var result = this.dataset.endedResult;
+        if (!result || result === currentEndedResultFilter) return;
+        currentEndedResultFilter = result;
+        currentPage = 1;
+        syncEndedResultUi();
+        renderCards();
+      });
+    });
+  }
+
   function bindTabs() {
     document.querySelectorAll('.tabs .tab[data-filter]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         const filter = this.dataset.filter;
         if (filter === currentFilter) return;
         currentFilter = filter;
+        if (filter === 'ended') currentEndedResultFilter = 'success';
         currentPage = 1;
         document.querySelectorAll('.tabs .tab[data-filter]').forEach(function (b) {
           b.classList.toggle('active', b.dataset.filter === filter);
           b.setAttribute('aria-selected', b.dataset.filter === filter ? 'true' : 'false');
         });
+        syncEndedResultUi();
         renderCards();
       });
     });
@@ -702,6 +723,8 @@
     }
     bindRegionTabs();
     bindTabs();
+    bindEndedResultTabs();
+    syncEndedResultUi();
     bindTheme();
     renderCards();
     tickCountdown();
