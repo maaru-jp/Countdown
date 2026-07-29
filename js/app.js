@@ -464,11 +464,7 @@
       });
 
       parts.push('<button type="button" class="pagination-arrow pagination-next" aria-label="下一頁"' + (nextDisabled ? ' disabled aria-disabled="true" title="目前已是最後一頁"' : ' title="下一頁"') + '><svg class="pagination-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>');
-      var pageHint = currentPage === 1
-        ? '目前第 1／' + totalPages + ' 頁，請往右查看下一頁'
-        : (currentPage === totalPages
-          ? '目前第 ' + currentPage + '／' + totalPages + ' 頁，可往左返回'
-          : '目前第 ' + currentPage + '／' + totalPages + ' 頁');
+      var pageHint = '目前第 ' + currentPage + '／' + totalPages + ' 頁';
       parts.push('<span class="pagination-status" aria-live="polite">' + pageHint + '</span>');
       nav.innerHTML = parts.join('');
       paginationWrap.innerHTML = '';
