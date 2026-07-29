@@ -5,6 +5,7 @@
   const SCRIPT_URL_KEY = 'googleScriptUrl'; // 與展示頁共用，供從試算表讀取列表（選用）
   var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwMsCxagnkHf6TbS5PzLJ-PpxyJY32eeDLTkX_vdDmCDeJ8OdUE2DxWyh4w2yquj7v3/exec';
   var listFilter = 'all';
+  var listRegionFilter = 'all';
 
   function getScriptUrl() {
     try {
@@ -123,6 +124,7 @@
   function matchesListFilter(item) {
     var statusKey = normalizeStatusForForm(item.status);
     var resultKey = inferOpenResult(item);
+    if (listRegionFilter !== 'all' && normalizeRegion(item.region) !== listRegionFilter) return false;
     if (listFilter === 'all') return true;
     if (listFilter === 'active') return statusKey !== 'ended';
     if (listFilter === 'success-ended') return statusKey === 'ended' && resultKey === 'success';
@@ -695,6 +697,16 @@
   var existingListSection = document.getElementById('existingListSection');
   if (existingListSection) {
     existingListSection.addEventListener('click', function (e) {
+      var regionFilterBtn = e.target && e.target.closest && e.target.closest('.existing-region-filter-btn');
+      if (regionFilterBtn) {
+        e.preventDefault();
+        listRegionFilter = regionFilterBtn.dataset.regionFilter || 'all';
+        existingListSection.querySelectorAll('.existing-region-filter-btn').forEach(function (b) {
+          b.classList.toggle('active', b === regionFilterBtn);
+        });
+        renderExistingList();
+        return;
+      }
       var filterBtn = e.target && e.target.closest && e.target.closest('.existing-filter-btn');
       if (filterBtn) {
         e.preventDefault();

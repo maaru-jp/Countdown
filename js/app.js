@@ -271,6 +271,37 @@
     return { text: parts.join(' '), done: false };
   }
 
+  function getProgressPriority(p) {
+    var progress = Array.isArray(p.progress) ? p.progress : [];
+    var firstPending = progress.findIndex(function (node) { return !node.done; });
+    return firstPending < 0 ? 99 : firstPending;
+  }
+
+  function sortEndedSuccess(a, b) {
+    var progressDiff = getProgressPriority(a) - getProgressPriority(b);
+    if (progressDiff !== 0) return progressDiff;
+    return String(b.endDate || '').localeCompare(String(a.endDate || ''));
+  }
+
+  function createEndedGroup(title, count, modifier, collapsible, open) {
+    var wrapper = document.createElement(collapsible ? 'details' : 'section');
+    wrapper.className = 'ended-group ended-group--' + modifier;
+    if (collapsible && open) wrapper.open = true;
+
+    var heading = document.createElement(collapsible ? 'summary' : 'div');
+    heading.className = 'ended-group-heading';
+    heading.innerHTML =
+      '<span class="ended-group-title">' + escapeHtml(title) + '</span>' +
+      '<span class="ended-group-count">' + count + '</span>';
+    wrapper.appendChild(heading);
+
+    var innerGrid = document.createElement('div');
+    innerGrid.className = 'cards-grid ended-group-grid';
+    wrapper.appendChild(innerGrid);
+
+    return { wrapper: wrapper, grid: innerGrid };
+  }
+
   function renderCards() {
     const grid = document.getElementById('cardsGrid');
     const empty = document.getElementById('emptyState');
@@ -278,12 +309,16 @@
     if (!grid || !empty) return;
 
     const fullList = getFiltered();
-    const totalPages = Math.max(1, Math.ceil(fullList.length / PER_PAGE));
+    var isEndedView = currentFilter === 'ended';
+    const totalPages = isEndedView ? 1 : Math.max(1, Math.ceil(fullList.length / PER_PAGE));
     if (currentPage > totalPages) currentPage = totalPages;
     const start = (currentPage - 1) * PER_PAGE;
-    const list = fullList.slice(start, start + PER_PAGE);
+    var list = isEndedView ? fullList.slice() : fullList.slice(start, start + PER_PAGE);
+    var successGrid = null;
+    var failedGrid = null;
 
     grid.innerHTML = '';
+    grid.classList.toggle('cards-grid--grouped', isEndedView);
 
     if (fullList.length === 0) {
       empty.hidden = false;
@@ -292,7 +327,24 @@
       return;
     }
     empty.hidden = true;
-    if (paginationWrap) paginationWrap.hidden = false;
+    if (paginationWrap) paginationWrap.hidden = isEndedView;
+
+    if (isEndedView) {
+      var successful = list.filter(function (p) { return inferOpenResult(p) === 'success'; }).sort(sortEndedSuccess);
+      var failed = list.filter(function (p) { return inferOpenResult(p) === 'failed'; });
+      list = successful.concat(failed);
+
+      if (successful.length > 0) {
+        var successGroup = createEndedGroup('成功開團', successful.length, 'success', false, true);
+        grid.appendChild(successGroup.wrapper);
+        successGrid = successGroup.grid;
+      }
+      if (failed.length > 0) {
+        var failedGroup = createEndedGroup('未成團紀錄', failed.length, 'failed', true, successful.length === 0);
+        grid.appendChild(failedGroup.wrapper);
+        failedGrid = failedGroup.grid;
+      }
+    }
 
     list.forEach(function (p) {
       const card = document.createElement('article');
@@ -406,10 +458,11 @@
         countdownHtml +
         '</div>';
 
-      grid.appendChild(card);
+      var targetGrid = isEndedSuccess ? successGrid : (isEndedFailed ? failedGrid : grid);
+      if (targetGrid) targetGrid.appendChild(card);
     });
 
-    if (paginationWrap && fullList.length > 0) {
+    if (paginationWrap && fullList.length > 0 && !isEndedView) {
       var nav = document.createElement('div');
       nav.className = 'pagination';
       // 桌機與手機共用：第 1 頁只顯示右箭頭 ›，第 2 頁起顯示左箭頭 ‹，未到最後一頁時右邊也顯示 ›
