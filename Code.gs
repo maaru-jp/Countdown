@@ -28,10 +28,10 @@ function formatDateOnlyCell(val) {
   return y2 + '-' + (m2 < 10 ? '0' : '') + m2 + '-' + (d2 < 10 ? '0' : '') + d2;
 }
 
-/** 開團結果：success（成團）/ failed（未成團）；非已結團可留空 */
+/** 開團結果：success（成功開團）/ failed（未成團）；非已結團可留空 */
 function normalizeOpenResultCell(val) {
   var s = String(val || '').trim();
-  if (s === 'success' || s === '成團' || s === '成團') return 'success';
+  if (s === 'success' || s === '成功開團' || s === '成功開團') return 'success';
   if (s === 'failed' || s === '未成團' || s === '失敗' || s === '未成團') return 'failed';
   return '';
 }
