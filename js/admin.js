@@ -116,7 +116,7 @@
   }
 
   function openResultLabel(val) {
-    if (val === 'success') return '成功開團';
+    if (val === 'success') return '成團';
     if (val === 'failed') return '未成團';
     return '';
   }

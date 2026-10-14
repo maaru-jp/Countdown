@@ -357,7 +357,7 @@
 
       var resultBadgeHtml = '';
       if (isEndedSuccess) {
-        resultBadgeHtml = '<span class="card-result-badge card-result-badge--success">成功結團</span>';
+        resultBadgeHtml = '<span class="card-result-badge card-result-badge--success">成團</span>';
       } else if (isEndedFailed) {
         resultBadgeHtml = '<span class="card-result-badge card-result-badge--failed">未成團</span>';
       }
@@ -366,7 +366,7 @@
       var progressWrapClass = 'progress-wrap';
       if (isEndedFailed) {
         progressWrapClass += ' progress-wrap--failed';
-        progressHtml = '<p class="card-ended-note">此團已結束，未成功開團</p>';
+        progressHtml = '<p class="card-ended-note">此團已結束，未成團</p>';
       } else if (p.progress && p.progress.length) {
         var currentIdx = statusForCountdown === 'ended' ? -1 : p.progress.findIndex(function (n) { return !n.done; });
         progressHtml = '<div class="progress-steps">' + p.progress.map(function (node, i) {
@@ -515,7 +515,7 @@
       ? '日本開團'
       : (currentRegionFilter === 'kr' ? '韓國開團' : '');
     if (currentFilter === 'ended') {
-      var resultName = currentEndedResultFilter === 'failed' ? '未成團紀錄' : '成功開團紀錄';
+      var resultName = currentEndedResultFilter === 'failed' ? '未成團紀錄' : '成團紀錄';
       return regionName ? regionName + '目前沒有' + resultName : '此分類暫無' + resultName;
     }
     if (currentFilter === 'ongoing') return regionName ? regionName + '目前沒有正在開團商品' : '此分類暫無正在開團商品';
