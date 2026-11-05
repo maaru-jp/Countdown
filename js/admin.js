@@ -164,7 +164,7 @@
     var rawDelay = (form.shipDelayDays && form.shipDelayDays.value) ? form.shipDelayDays.value.trim() : '';
     var shipDelayDays = rawDelay === '' ? null : Math.max(0, parseInt(rawDelay, 10) || 0);
 
-    var progressNames = ['收單中', '等待出荷', '集運中', '抵台', '已完成出貨'];
+    var progressNames = ['收單中', '等待出荷', '集運中', '抵台', '完成出貨'];
     var progress = [];
     progressNames.forEach(function (name, i) {
       var el = form.querySelector('input[data-name="' + name + '"]');
@@ -325,12 +325,14 @@
     if (openResultEl) openResultEl.checked = true;
     toggleOpenResultRow();
     form.registeredCount.value = (item.registeredCount != null && item.registeredCount !== '') ? String(item.registeredCount) : '';
-    var progressNames = ['收單中', '等待出荷', '集運中', '抵台', '已完成出貨'];
+    var progressNames = ['收單中', '等待出荷', '集運中', '抵台', '完成出貨'];
     var progress = item.progress || [];
     progressNames.forEach(function (name) {
       var el = form.querySelector('input[data-name="' + name + '"]');
       if (el) {
-        var p = progress.find(function (x) { return x.name === name; });
+        var p = progress.find(function (x) {
+          return x.name === name || (name === '完成出貨' && x.name === '已完成出貨');
+        });
         el.checked = !!(p && p.done);
       }
     });

@@ -8,10 +8,14 @@
     '等待出荷': '<svg class="progress-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>',
     '集運中': '<svg class="progress-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h5l3 3v5h-8V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
     '抵台': '<svg class="progress-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
-    '已完成出貨': '<svg class="progress-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>'
+    '完成出貨': '<svg class="progress-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>'
   };
+  function normalizeProgressName(name) {
+    return name === '已完成出貨' ? '完成出貨' : name;
+  }
   function getProgressIcon(name) {
-    return PROGRESS_ICONS[name] || PROGRESS_ICONS['已完成出貨'];
+    var key = normalizeProgressName(name);
+    return PROGRESS_ICONS[key] || PROGRESS_ICONS['完成出貨'];
   }
   const DEFAULT_DATA = [
     {
@@ -23,7 +27,7 @@
       imageUrl: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400',
       startDate: '2025-03-10',
       endDate: '2025-03-20',
-      progress: [{ name: '收單中', done: false }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '已完成出貨', done: false }],
+      progress: [{ name: '收單中', done: false }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '完成出貨', done: false }],
       countdownTo: '2025-03-10T10:00:00'
     },
     {
@@ -35,7 +39,7 @@
       imageUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400',
       startDate: '2025-02-28',
       endDate: '2025-03-15',
-      progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: true }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '已完成出貨', done: false }],
+      progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: true }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '完成出貨', done: false }],
       registeredCount: 10,
       countdownTo: '2025-03-18T18:00:00'
     },
@@ -48,7 +52,7 @@
       imageUrl: 'https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?w=400',
       startDate: '2025-03-01',
       endDate: '2025-03-12',
-      progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '已完成出貨', done: false }],
+      progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '完成出貨', done: false }],
       registeredCount: 24,
       countdownTo: '2025-03-20T12:00:00'
     },
@@ -62,7 +66,7 @@
       imageUrl: 'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=400',
       startDate: '2025-01-05',
       endDate: '2025-01-20',
-      progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: true }, { name: '集運中', done: true }, { name: '抵台', done: true }, { name: '已完成出貨', done: true }],
+      progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: true }, { name: '集運中', done: true }, { name: '抵台', done: true }, { name: '完成出貨', done: true }],
       countdownTo: null
     },
     {
@@ -74,7 +78,7 @@
       imageUrl: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400',
       startDate: '2025-03-15',
       endDate: '2025-03-25',
-      progress: [{ name: '收單中', done: false }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '已完成出貨', done: false }],
+      progress: [{ name: '收單中', done: false }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '完成出貨', done: false }],
       countdownTo: '2025-03-15T09:00:00'
     }
   ];
@@ -371,8 +375,9 @@
         var currentIdx = statusForCountdown === 'ended' ? -1 : p.progress.findIndex(function (n) { return !n.done; });
         progressHtml = '<div class="progress-steps">' + p.progress.map(function (node, i) {
           var c = node.done ? 'passed' : (i === currentIdx) ? 'current' : 'pending';
-          var icon = getProgressIcon(node.name);
-          return '<div class="progress-node ' + c + '"><span class="progress-node-label">' + escapeHtml(node.name) + '</span><span class="progress-node-icon">' + icon + '<span class="progress-node-light" aria-hidden="true"></span></span></div>';
+          var displayName = normalizeProgressName(node.name);
+          var icon = getProgressIcon(displayName);
+          return '<div class="progress-node ' + c + '"><span class="progress-node-label">' + escapeHtml(displayName) + '</span><span class="progress-node-icon">' + icon + '<span class="progress-node-light" aria-hidden="true"></span></span></div>';
         }).join('') + '</div>';
       }
 
