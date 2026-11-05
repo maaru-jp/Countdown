@@ -81,11 +81,11 @@
       }
       function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
       var def = [
-        { title: '日本直送草莓禮盒', status: 'upcoming', badge: 'new', imageUrl: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400', startDate: '2025-03-10', endDate: '2025-03-20', progress: [{ name: '收單中', done: false }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '已完成出貨', done: false }] },
-        { title: '韓國美妝熱銷組', status: 'ongoing', badge: 'hot', imageUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400', startDate: '2025-02-28', endDate: '2025-03-15', registeredCount: 10, progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: true }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '已完成出貨', done: false }] },
-        { title: '春日零食大賞', status: 'ongoing', badge: 'recommend', imageUrl: 'https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?w=400', startDate: '2025-03-01', endDate: '2025-03-12', registeredCount: 24, progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '已完成出貨', done: false }] },
-        { title: '冬季保暖小物團', status: 'ended', badge: 'hot', imageUrl: 'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=400', startDate: '2025-01-05', endDate: '2025-01-20', progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: true }, { name: '集運中', done: true }, { name: '抵台', done: true }, { name: '已完成出貨', done: true }] },
-        { title: '初春限定和菓子', status: 'upcoming', badge: 'recommend', imageUrl: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400', startDate: '2025-03-15', endDate: '2025-03-25', progress: [{ name: '收單中', done: false }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '已完成出貨', done: false }] }
+        { title: '日本直送草莓禮盒', status: 'upcoming', badge: 'new', imageUrl: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400', startDate: '2025-03-10', endDate: '2025-03-20', progress: [{ name: '收單中', done: false }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '完成出貨', done: false }] },
+        { title: '韓國美妝熱銷組', status: 'ongoing', badge: 'hot', imageUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400', startDate: '2025-02-28', endDate: '2025-03-15', registeredCount: 10, progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: true }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '完成出貨', done: false }] },
+        { title: '春日零食大賞', status: 'ongoing', badge: 'recommend', imageUrl: 'https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?w=400', startDate: '2025-03-01', endDate: '2025-03-12', registeredCount: 24, progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '完成出貨', done: false }] },
+        { title: '冬季保暖小物團', status: 'ended', badge: 'hot', imageUrl: 'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=400', startDate: '2025-01-05', endDate: '2025-01-20', progress: [{ name: '收單中', done: true }, { name: '等待出荷', done: true }, { name: '集運中', done: true }, { name: '抵台', done: true }, { name: '完成出貨', done: true }] },
+        { title: '初春限定和菓子', status: 'upcoming', badge: 'recommend', imageUrl: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400', startDate: '2025-03-15', endDate: '2025-03-25', progress: [{ name: '收單中', done: false }, { name: '等待出荷', done: false }, { name: '集運中', done: false }, { name: '抵台', done: false }, { name: '完成出貨', done: false }] }
       ];
       setTimeout(function () {
         var grid = document.getElementById('cardsGrid');
@@ -94,7 +94,7 @@
         var filter = 'upcoming';
         var list = def.filter(function (p) { return p.status === filter; });
         if (list.length === 0) list = def.slice(0, 2);
-        var icons = { '收單中': '🛒', '等待出荷': '📦', '集運中': '🚚', '抵台': '📍', '已完成出貨': '✓' };
+        var icons = { '收單中': '🛒', '等待出荷': '📦', '集運中': '🚚', '抵台': '📍', '完成出貨': '✓' };
         list.forEach(function (p) {
           var badgeTxt = p.badge === 'new' ? '新品' : p.badge === 'hot' ? '熱銷' : '推薦';
           var badgeCls = p.badge === 'new' ? 'new' : p.badge === 'hot' ? 'hot' : 'recommend';
